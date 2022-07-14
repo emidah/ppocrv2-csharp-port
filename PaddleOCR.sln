@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32616.157
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaddleOCR", "PaddleOCR\PaddleOCR.csproj", "{65D3DB85-A85D-4C20-81C8-3B3E219B4645}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{65D3DB85-A85D-4C20-81C8-3B3E219B4645}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65D3DB85-A85D-4C20-81C8-3B3E219B4645}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65D3DB85-A85D-4C20-81C8-3B3E219B4645}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65D3DB85-A85D-4C20-81C8-3B3E219B4645}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2C8BC39F-6B35-46AE-A3DB-F6E53F0131FD}
+	EndGlobalSection
+EndGlobal
