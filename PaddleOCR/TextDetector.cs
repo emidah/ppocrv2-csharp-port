@@ -61,7 +61,7 @@ public class TextDetector {
         //else:
         var mem = new Memory<float>(img.ToArray<float>());
         var inputTensor = new DenseTensor<float>(mem, img.shape.as_int_list());
-        var input = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor("input", inputTensor) };
+        var input = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(this.predictor.InputMetadata.Keys.First(), inputTensor) };
         var outputs = this.predictor.Run(input).ToList();
 
         //var preds = new Dictionary<string, NDArray>();
