@@ -1,9 +1,11 @@
 ﻿namespace PaddleOCR;
 
 using static SharpCV.Binding;
+using static Tensorflow.Binding;
 
 public class PaddleOCR {
     public static void Main(string[] args) {
+        tf.enable_eager_execution();
         var flags = new Args() {
             cls_model_dir = "./models/ch_ppocr_mobile_v2.0_cls_infer.onnx",
             rec_model_dir = "./models/ch_PP-OCRv2_rec_infer.onnx",
@@ -17,6 +19,7 @@ public class PaddleOCR {
 // text detect
         var text_detector = new TextDetector(flags);
         var dt_boxes = text_detector.Detect(img);
+        var a = 0;
 //        (dt_boxes, img_crop_list) = preprocess_boxes(dt_boxes);
 
 //// text classifier
