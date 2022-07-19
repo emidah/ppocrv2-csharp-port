@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="com.angusj.Clipper" Version="6.4.2" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.11.0" />
     <PackageReference Include="OpenCvSharp4" Version="4.6.0.20220608" />
@@ -25,9 +29,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="images\lite_demo.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="images\test.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="models\ch_PP-OCRv2_det_infer.onnx">

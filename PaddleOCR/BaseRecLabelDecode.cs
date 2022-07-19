@@ -4,90 +4,83 @@ using Tensorflow.NumPy;
 
 namespace PaddleOCR;
 
+/// <summary>
+///     Convert between text-label and text-index
+/// </summary>
 public abstract class BaseRecLabelDecode {
-    private string beg_str;
-
-    private string end_str;
-
-    private string character_str;
-
-    private readonly Dictionary<string, int> dict;
-
     private readonly string[] character;
-    //""" Convert between text-label and text-index """
 
-    protected BaseRecLabelDecode(string character_dict_path=null, bool use_space_char=false){
-        this.beg_str = "sos";
-        this.end_str = "eos";
 
-        this.character_str = "";
-        string[] dict_character;
-        if (character_dict_path == null) {
-            this.character_str = "0123456789abcdefghijklmnopqrstuvwxyz";
-            dict_character = this.character_str.ToCharArray().Select(c => c.ToString()).ToArray();
+    protected BaseRecLabelDecode(string characterDictPath = null, bool useSpaceChar = false) {
+        var characterStr = "";
+        string[] dictCharacter;
+        if (characterDictPath == null) {
+            characterStr = "0123456789abcdefghijklmnopqrstuvwxyz";
+            dictCharacter = characterStr.ToCharArray().Select(c => c.ToString()).ToArray();
         } else {
             //using ... (character_dict_path, "rb") as fin:
-            var lines = File.ReadLines(character_dict_path, Encoding.UTF8);
+            var lines = File.ReadLines(characterDictPath, Encoding.UTF8);
             foreach (var line in lines) {
                 var line2 = line.Trim('\n').Trim('\r');
-                this.character_str += line2;
+                characterStr += line2;
             }
 
-            if (use_space_char) {
-                this.character_str += " ";
+            if (useSpaceChar) {
+                characterStr += " ";
             }
 
-            dict_character = this.character_str.ToCharArray().Select(c => c.ToString()).ToArray();
+            dictCharacter = characterStr.ToCharArray().Select(c => c.ToString()).ToArray();
         }
 
         // ReSharper disable once VirtualMemberCallInConstructor
-        dict_character = this.add_special_char(dict_character);
-        this.dict = new Dictionary<string, int>(){ };
-        for (int i = 0; i < dict_character.Length; i++) {
-            var ch = dict_character[i];
-            this.dict[ch] = i;
-        }
-
-        this.character = dict_character;
+        dictCharacter = add_special_char(dictCharacter);
+        character = dictCharacter;
     }
 
-    public abstract string[] add_special_char(string[] dict_character);
-        
-    public List<(string, float)> decode(NDArray text_index, NDArray text_prob=null, bool is_remove_duplicate=false){
-        //""" convert text-index into text-label. """
-        var result_list = new List<(string,float)>();
-        var ignored_tokens = this.get_ignored_tokens();
-        var batch_size = (int)text_index.shape[0];
-        for (var batch_idx = 0; batch_idx < batch_size; batch_idx++) {
-            var char_list = new List<string>();
-            var conf_list = new List<float>();
+    public abstract string[] add_special_char(string[] dictCharacter);
 
-            for (var idx = 0; idx < (int)text_index[batch_idx].shape[0]; idx++) {
-                if(ignored_tokens.Contains(text_index[batch_idx][idx])){
+    /// <summary>
+    /// convert text-index into text-label
+    /// </summary>
+    /// <param name="textIndex"></param>
+    /// <param name="textProb"></param>
+    /// <param name="isRemoveDuplicate"></param>
+    /// <returns></returns>
+    public List<(string, float)> Decode(NDArray textIndex, NDArray textProb = null, bool isRemoveDuplicate = false) {
+        var resultList = new List<(string, float)>();
+        var ignoredTokens = get_ignored_tokens();
+        var batchSize = (int)textIndex.shape[0];
+        for (var batchIdx = 0; batchIdx < batchSize; batchIdx++) {
+            var charList = new List<string>();
+            var confList = new List<float>();
+
+            for (var idx = 0; idx < (int)textIndex[batchIdx].shape[0]; idx++) {
+                if (ignoredTokens.Contains(textIndex[batchIdx][idx])) {
                     continue;
                 }
-                if (is_remove_duplicate) {
-//# only for predict
-                    if (idx > 0 && text_index[batch_idx][idx - 1] == text_index[
-                            batch_idx][idx]) {
+
+                if (isRemoveDuplicate) { 
+                    //only for predict
+                    if (idx > 0 && textIndex[batchIdx][idx - 1] == textIndex[
+                            batchIdx][idx]) {
                         continue;
                     }
                 }
 
-                char_list.Add(this.character[(int)text_index[batch_idx][
+                charList.Add(character[(int)textIndex[batchIdx][
                     idx]]);
-                if (text_prob is not null) {
-                    conf_list.Add(text_prob[batch_idx][idx]);
+                if (textProb is not null) {
+                    confList.Add(textProb[batchIdx][idx]);
                 } else {
-                    conf_list.append(1);
+                    confList.append(1);
                 }
             }
 
-            var text =  string.Join("", char_list);
-            result_list.append((text, np.mean(new NDArray(conf_list.ToArray()))));
+            var text = string.Join("", charList);
+            resultList.append((text, np.mean(new NDArray(confList.ToArray()))));
         }
 
-        return result_list;
+        return resultList;
     }
 
     public List<int> get_ignored_tokens() {

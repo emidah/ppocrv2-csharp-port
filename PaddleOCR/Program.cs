@@ -1,5 +1,5 @@
 ﻿using System.Globalization;
-using System.Runtime.CompilerServices;
+using System.Text;
 using SharpCV;
 using Tensorflow.NumPy;
 
@@ -8,7 +8,7 @@ namespace PaddleOCR;
 using static Binding;
 using static Tensorflow.Binding;
 
-public class PaddleOCR {
+public class PaddleOcr {
     private static Args flags;
 
     public static void Main(string[] args) {
@@ -21,43 +21,44 @@ public class PaddleOCR {
             use_paddle_predict = false
         };
         var img = cv2.imread(flags.image_path).data;
-        var ori_im = img.Copy();
+        var oriIm = img.Copy();
 
 // text detect
-        var text_detector = new TextDetector(flags);
-        var dt_boxes = text_detector.Detect(img);
+        var textDetector = new TextDetector(flags);
+        var dtBoxes = textDetector.Detect(img);
         var a = 0;
-        (dt_boxes, IList<NDArray> img_crop_list) = PreProcessor.preprocess_boxes(dt_boxes, ori_im);
+        (dtBoxes, var imgCropList) = PreProcessor.PreprocessBoxes(dtBoxes, oriIm);
 
         //// text classifier
         if (flags.use_angle_cls) {
-            var text_classifier = new TextClassifier(flags);
-            (img_crop_list, _) = text_classifier.Classify(img_crop_list);
+            var textClassifier = new TextClassifier(flags);
+            (imgCropList, _) = textClassifier.Classify(imgCropList);
         }
 
         //// text recognize
-        var text_recognizer = new TextRecognizer(flags);
-        var rec_res = text_recognizer.Recognize(img_crop_list.ToList());
+        var textRecognizer = new TextRecognizer(flags);
+        var recRes = textRecognizer.Recognize(imgCropList.ToList());
 
-        var (_, filter_rec_res) = PostProcess(dt_boxes, rec_res);
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        var (_, filterRecRes) = PostProcess(dtBoxes, recRes);
+        Console.OutputEncoding = Encoding.UTF8;
 
-        foreach (var (text, score) in filter_rec_res) {
+        foreach (var (text, score) in filterRecRes) {
             Console.WriteLine("{0}, {1:.3f}", new object[] { text, score.ToString(CultureInfo.InvariantCulture) });
         }
+
         Console.WriteLine("Finish!");
     }
 
-    private static (NDArray dt_boxes, IList<(string, float)> rec_res) PostProcess(NDArray dt_boxes, IList<(string, float)> rec_res) {
-        var (filter_boxes, filter_rec_res) = (new List<NDArray>(), new List<(string, float)>());
-        foreach (var (box, rec_result) in zip(dt_boxes, rec_res)) {
-            var (text, score) = rec_result;
+    private static (NDArray dt_boxes, IList<(string, float)> rec_res) PostProcess(NDArray dtBoxes, IList<(string, float)> recRes) {
+        var (filterBoxes, filterRecRes) = (new List<NDArray>(), new List<(string, float)>());
+        foreach (var (box, recResult) in zip(dtBoxes, recRes)) {
+            var (text, score) = recResult;
             if (score >= flags.drop_score) {
-                filter_boxes.append(box);
-                filter_rec_res.append(rec_result);
+                filterBoxes.append(box);
+                filterRecRes.append(recResult);
             }
         }
 
-        return (NDArrayExtensions.FromArray(filter_boxes.ToArray()), filter_rec_res);
+        return (NdArrayExtensions.FromArray(filterBoxes.ToArray()), filterRecRes);
     }
 }

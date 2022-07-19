@@ -1,15 +1,9 @@
-﻿
-
-
-
-
-using Tensorflow;
+﻿using Tensorflow;
 using Tensorflow.NumPy;
-using static Tensorflow.Binding;
 
 namespace PaddleOCR;
 
-public static class NDArrayExtensions {
+public static class NdArrayExtensions {
     public static NDArray Copy(this NDArray a) {
         var toReturn = new NDArray(a.ToByteArray(), a.shape, a.dtype);
         return toReturn;
@@ -17,15 +11,15 @@ public static class NDArrayExtensions {
 
     public static NDArray FromArray(NDArray[] arrays) {
         var newShape = arrays[0].shape.as_int_list().Prepend(arrays.Length).ToArray();
-        var toReturn = new NDArray(new Shape(newShape), dtype: arrays[0].dtype);
+        var toReturn = new NDArray(new Shape(newShape), arrays[0].dtype);
         for (var i = 0; i < arrays.Length; i++) {
             toReturn[i] = arrays[i];
         }
+
         return toReturn;
     }
 
-    public static NDArray NDMin(this NDArray nd) {
-        
+    public static NDArray NdMin(this NDArray nd) {
         switch (nd.dtype) {
             case TF_DataType.TF_FLOAT: {
                 var newArray = nd.ToArray<float>();
@@ -44,10 +38,9 @@ public static class NDArrayExtensions {
             }
             default: throw new NotImplementedException();
         }
-        
     }
 
-    public static NDArray NDMax(this NDArray nd) {
+    public static NDArray NdMax(this NDArray nd) {
         switch (nd.dtype) {
             case TF_DataType.TF_FLOAT: {
                 var newArray = nd.ToArray<float>();
@@ -68,7 +61,7 @@ public static class NDArrayExtensions {
         }
     }
 
-    public static NDArray AsNDArrayOfType(this Tensor t, TF_DataType type) {
+    public static NDArray AsNdArrayOfType(this Tensor t, TF_DataType type) {
         var x = new NDArray(t).astype(type);
         return x;
     }

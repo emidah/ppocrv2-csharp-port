@@ -9,59 +9,59 @@ using static Binding;
 using static Tensorflow.Binding;
 
 public class PreProcessor {
-    public static (NDArray, IList<NDArray>) preprocess_boxes(NDArray dt_boxes, NDArray ori_im) {
-        var img_crop_list = new List<NDArray>();
-        dt_boxes = sorted_boxes(dt_boxes);
-        foreach (var bno in Enumerable.Range(0, dt_boxes.Count())) {
-            var tmp_box = dt_boxes[bno].Copy();
-            var img_crop = get_rotate_crop_image(ori_im, tmp_box);
-            img_crop_list.Add(img_crop);
+    public static (NDArray, IList<NDArray>) PreprocessBoxes(NDArray dtBoxes, NDArray oriIm) {
+        var imgCropList = new List<NDArray>();
+        dtBoxes = SortedBoxes(dtBoxes);
+        foreach (var bno in Enumerable.Range(0, dtBoxes.Count())) {
+            var tmpBox = dtBoxes[bno].Copy();
+            var imgCrop = RotateCropImage(oriIm, tmpBox);
+            imgCropList.Add(imgCrop);
         }
 
-        return (dt_boxes, img_crop_list);
+        return (dtBoxes, imgCropList);
     }
 
-    public static NDArray get_rotate_crop_image(NDArray img, NDArray points) {
+    public static NDArray RotateCropImage(NDArray img, NDArray points) {
         //assert len(points) == 4, "shape of points must be 4*2"
-        var img_crop_width = Math.Max((int)
+        var imgCropWidth = Math.Max((int)
             np.linalg.norm(points[0] - points[1]),
             np.linalg.norm(points[2] - points[3]));
-        var img_crop_height = Math.Max((int)
+        var imgCropHeight = Math.Max((int)
             np.linalg.norm(points[0] - points[3]),
             np.linalg.norm(points[1] - points[2]));
-        var pts_std = new NDArray(
+        var ptsStd = new NDArray(
             new[] {
-                0, 0, img_crop_width,
-                0, img_crop_width, img_crop_height, 0, img_crop_height
+                0, 0, imgCropWidth,
+                0, imgCropWidth, imgCropHeight, 0, imgCropHeight
             }, new Shape(4, 2));
-        var m = cv2.GetPerspectiveTransform(points, pts_std);
-        var dst_img = cv2.WarpPerspective(
+        var m = cv2.GetPerspectiveTransform(points, ptsStd);
+        var dstImg = cv2.WarpPerspective(
             img,
             m,
-            (img_crop_width, img_crop_height),
+            (imgCropWidth, imgCropHeight),
             InterpolationFlags.Cubic,
             BorderTypes.Replicate);
 
-        var (dst_img_height, dst_img_width) = (dst_img.shape[0], dst_img.shape[1]);
-        if (dst_img_height * 1.0 / dst_img_width >= 1.5) {
-            var rotated = new NDArray(tf.transpose(dst_img, new Axis(1, 0, 2)));
-            dst_img = rotated[Slice.ParseSlices("::-1,:,:")];
+        var (dstImgHeight, dstImgWidth) = (dstImg.shape[0], dstImg.shape[1]);
+        if (dstImgHeight * 1.0 / dstImgWidth >= 1.5) {
+            var rotated = new NDArray(tf.transpose(dstImg, new Axis(1, 0, 2)));
+            dstImg = rotated[Slice.ParseSlices("::-1,:,:")];
         }
 
-        return dst_img;
+        return dstImg;
     }
 
-    public static NDArray sorted_boxes(NDArray dt_boxes) {
-        var num_boxes = dt_boxes.shape[0];
-        var sorted_boxes = dt_boxes.OrderBy(x => (int)x[0][1] /*, x[0][0]*/);
-        var _boxes = sorted_boxes.ToArray();
+    public static NDArray SortedBoxes(NDArray dtBoxes) {
+        var numBoxes = dtBoxes.shape[0];
+        var sortedBoxes = dtBoxes.OrderBy(x => (int)x[0][1] /*, x[0][0]*/);
+        var boxes = sortedBoxes.ToArray();
 
-        for (var i = 0; i < num_boxes - 1; i++) {
-            if (Math.Abs((int)(_boxes[i + 1][0][1] - _boxes[i][0][1])) < 10 && _boxes[i + 1][0][0] < _boxes[i][0][0]) {
-                (_boxes[i], _boxes[i + 1]) = (_boxes[i + 1], _boxes[i]);
+        for (var i = 0; i < numBoxes - 1; i++) {
+            if (Math.Abs((int)(boxes[i + 1][0][1] - boxes[i][0][1])) < 10 && boxes[i + 1][0][0] < boxes[i][0][0]) {
+                (boxes[i], boxes[i + 1]) = (boxes[i + 1], boxes[i]);
             }
         }
 
-        return NDArrayExtensions.FromArray(_boxes);
+        return NdArrayExtensions.FromArray(boxes);
     }
 }

@@ -9,93 +9,90 @@ using static Tensorflow.Binding;
 namespace PaddleOCR;
 
 public class TextClassifier {
-    private readonly int[] cls_image_shape;
-    private readonly int cls_batch_num;
-    private readonly float cls_thresh;
-    private readonly ClsPostProcess postprocess_op;
-    private readonly Args args;
+    private readonly int clsBatchNum;
+    private readonly int[] clsImageShape;
+    private readonly float clsThresh;
+    private readonly ClsPostProcess postprocessOp;
     private readonly InferenceSession predictor;
 
     public TextClassifier(Args args) {
-        this.cls_image_shape = args.cls_image_shape.Split(",").Select(int.Parse).ToArray();
-        this.cls_batch_num = args.cls_batch_num;
-        this.cls_thresh = args.cls_thresh;
-        this.postprocess_op = new ClsPostProcess(args.label_list);
-        this.args = args;
+        this.clsImageShape = args.cls_image_shape.Split(",").Select(int.Parse).ToArray();
+        this.clsBatchNum = args.cls_batch_num;
+        this.clsThresh = args.cls_thresh;
+        this.postprocessOp = new ClsPostProcess(args.label_list);
 
-        var model_dir = args.cls_model_dir;
-        var sess = new InferenceSession(model_dir);
+        var modelDir = args.cls_model_dir;
+        var sess = new InferenceSession(modelDir);
         this.predictor = sess;
     }
 
-    public (IList<NDArray>, object) Classify(IList<NDArray> img_list) {
-        var img_num = img_list.Count;
+    public (IList<NDArray>, object) Classify(IList<NDArray> imgList) {
+        var imgNum = imgList.Count;
         //# Calculate the aspect ratio of all text bars
-        var width_list = new List<float>();
-        foreach (var img in img_list) {
-            width_list.Add(img.shape[1] / (float)img.shape[0]);
+        var widthList = new List<float>();
+        foreach (var img in imgList) {
+            widthList.Add(img.shape[1] / (float)img.shape[0]);
         }
 
         //# Sorting can speed up the cls process
-        var indices = np.argsort(new NDArray(width_list.ToArray()));
+        var indices = np.argsort(new NDArray(widthList.ToArray()));
 
-        var cls_res = new List<(string, float)>(img_num);
-        for (var i = 0; i < img_num; i++) {
-            cls_res.Add(("", 0.0f));
+        var clsRes = new List<(string, float)>(imgNum);
+        for (var i = 0; i < imgNum; i++) {
+            clsRes.Add(("", 0.0f));
         }
 
-        var batch_num = this.cls_batch_num;
+        var batchNum = this.clsBatchNum;
 
-        for (var beg_img_no = 0; beg_img_no < img_num; beg_img_no += batch_num) {
-            var end_img_no = Math.Min(img_num, beg_img_no + batch_num);
-            var norm_img_batch = new List<NDArray>();
-            var max_wh_ratio = 0.0f;
-            for (var ino = beg_img_no; ino < end_img_no; ino++) {
-                var (h, w) = (img_list[indices[ino]].shape[0], img_list[indices[ino]].shape[1]);
-                var wh_ratio = w * 1.0f / h;
-                max_wh_ratio = Math.Max(max_wh_ratio, wh_ratio);
+        for (var begImgNo = 0; begImgNo < imgNum; begImgNo += batchNum) {
+            var endImgNo = Math.Min(imgNum, begImgNo + batchNum);
+            var normImgBatch = new List<NDArray>();
+            var maxWhRatio = 0.0f;
+            for (var ino = begImgNo; ino < endImgNo; ino++) {
+                var (h, w) = (imgList[indices[ino]].shape[0], imgList[indices[ino]].shape[1]);
+                var whRatio = w * 1.0f / h;
+                maxWhRatio = Math.Max(maxWhRatio, whRatio);
             }
 
-            for (var ino = beg_img_no; ino < end_img_no; ino++) {
-                var norm_img = this.resize_norm_img(img_list[indices[ino]],
-                    max_wh_ratio);
-                norm_img = norm_img[np.newaxis, new Slice(":")];
-                norm_img_batch.Add(norm_img);
+            for (var ino = begImgNo; ino < endImgNo; ino++) {
+                var normImg = this.ResizeNormImg(imgList[indices[ino]],
+                    maxWhRatio);
+                normImg = normImg[np.newaxis, new Slice(":")];
+                normImgBatch.Add(normImg);
             }
 
-            var arr_norm_img_batch = np.concatenate(norm_img_batch.ToArray());
-            arr_norm_img_batch = arr_norm_img_batch.Copy();
+            var arrNormImgBatch = np.concatenate(normImgBatch.ToArray());
+            arrNormImgBatch = arrNormImgBatch.Copy();
             //input_dict = {}
             //input_dict[self.predictor.get_inputs()[0].name] = norm_img_batch
             //outputs = self.predictor.run(None, input_dict)
             //prob_out = outputs[0]
-            var mem = new Memory<float>(arr_norm_img_batch.ToArray<float>());
-            var inputTensor = new DenseTensor<float>(mem, arr_norm_img_batch.shape.as_int_list());
+            var mem = new Memory<float>(arrNormImgBatch.ToArray<float>());
+            var inputTensor = new DenseTensor<float>(mem, arrNormImgBatch.shape.as_int_list());
             var input = new List<NamedOnnxValue>
                 { NamedOnnxValue.CreateFromTensor(this.predictor.InputMetadata.Keys.First(), inputTensor) };
             var outputs = this.predictor.Run(input).ToList();
-            var prob_out = outputs[0];
             var tensor = outputs[0].AsTensor<float>();
-            var prob_out_array = new NDArray(tensor.ToArray(), new Shape(tensor.Dimensions.ToArray()));
+            var probOutArray = new NDArray(tensor.ToArray(), new Shape(tensor.Dimensions.ToArray()));
 
-            var cls_result = this.postprocess_op.PostProcess(prob_out_array);
-            for (var rno = 0; rno < cls_result.Count; rno++) {
-                var (label, score) = cls_result[rno];
-                cls_res[indices[beg_img_no + rno]] = (label, score);
-                if (label.Contains("180") && score > this.cls_thresh) {
-                    img_list[indices[beg_img_no + rno]] = cv2.rotate(
-                        img_list[indices[beg_img_no + rno]], (RotateFlags)1);
+            var clsResult = this.postprocessOp.PostProcess(probOutArray);
+            for (var rno = 0; rno < clsResult.Count; rno++) {
+                var (label, score) = clsResult[rno];
+                clsRes[indices[begImgNo + rno]] = (label, score);
+                if (label.Contains("180") && score > this.clsThresh) {
+                    imgList[indices[begImgNo + rno]] = cv2.rotate(
+                        imgList[indices[begImgNo + rno]], (RotateFlags)1);
                 }
             }
         }
 
-        return (img_list, cls_res);
+        return (imgList, clsRes);
     }
 
-    private NDArray resize_norm_img(NDArray img, float max_wh_ratio) {
-        var (imgC, imgH, imgW) = (this.cls_image_shape[0], this.cls_image_shape[1], this.cls_image_shape[2]);
+    private NDArray ResizeNormImg(NDArray img, float maxWhRatio) {
+        var (imgC, imgH, imgW) = (this.clsImageShape[0], this.clsImageShape[1], this.clsImageShape[2]);
         //assert imgC == img.shape[2]
-        imgW = (int)(32 * max_wh_ratio);
+        imgW = (int)(32 * maxWhRatio);
         var w = this.predictor.InputMetadata.First().Value.Dimensions[3]; //TODO
         if (w > 0) {
             imgW = w;
@@ -103,36 +100,36 @@ public class TextClassifier {
 
         (var h, w) = ((int)img.shape[0], (int)img.shape[1]);
         var ratio = (float)w / h;
-        int resized_w;
+        int resizedW;
         if (Math.Ceiling(imgH * ratio) > imgW) {
-            resized_w = imgW;
+            resizedW = imgW;
         } else {
-            resized_w = (int)Math.Ceiling(imgH * ratio);
+            resizedW = (int)Math.Ceiling(imgH * ratio);
         }
 
-        var resized_image = (NDArray)cv2.resize(img, (resized_w, imgH));
-        resized_image = resized_image.astype(TF_DataType.TF_FLOAT);
-        resized_image = new NDArray(tf.transpose(resized_image, new Axis(2, 0, 1))) / 255;
-        resized_image -= 0.5;
-        resized_image /= 0.5;
-        var padding_im = np.zeros((imgC, imgH, imgW), np.float32);
-        padding_im[new Slice(":"), new Slice(":"), new Slice(0, resized_w)] = resized_image;
-        return padding_im;
+        var resizedImage = (NDArray)cv2.resize(img, (resizedW, imgH));
+        resizedImage = resizedImage.astype(TF_DataType.TF_FLOAT);
+        resizedImage = new NDArray(tf.transpose(resizedImage, new Axis(2, 0, 1))) / 255;
+        resizedImage -= 0.5;
+        resizedImage /= 0.5;
+        var paddingIm = np.zeros((imgC, imgH, imgW), np.float32);
+        paddingIm[new Slice(":"), new Slice(":"), new Slice(0, resizedW)] = resizedImage;
+        return paddingIm;
     }
 
     public class ClsPostProcess {
-        private readonly int[] label_list;
+        private readonly int[] labelList;
         //""" Convert between text-label and text-index """
 
-        public ClsPostProcess(int[] label_list) {
+        public ClsPostProcess(int[] labelList) {
             //super(ClsPostProcess, this).__init__()
-            this.label_list = label_list;
+            this.labelList = labelList;
         }
 
         public List<(string, float)> PostProcess(NDArray preds) {
-            var pred_idxs = np.argmax(preds, 1);
-            var decode_out = pred_idxs.Select((idx, i) => (this.label_list[idx].ToString(), (float)preds[i, idx])).ToList();
-            return decode_out;
+            var predIdxs = np.argmax(preds, 1);
+            var decodeOut = predIdxs.Select((idx, i) => (this.labelList[idx].ToString(), (float)preds[i, idx])).ToList();
+            return decodeOut;
         }
     }
 }
