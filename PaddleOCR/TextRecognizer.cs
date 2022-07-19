@@ -32,9 +32,6 @@ public class TextRecognizer {
 
         //# Sorting can speed up the recognition process
         var indices = np.argsort(np.array(width_list.ToArray()));
-        for (int i = 0; i < img_num; i++) {
-            
-        }
 
         var rec_res = new List<(string, float)>(img_num);
         for(int i = 0; i<img_num; i++) {

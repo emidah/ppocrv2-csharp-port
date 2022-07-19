@@ -27,15 +27,13 @@ public class PaddleOCR {
         var text_detector = new TextDetector(flags);
         var dt_boxes = text_detector.Detect(img);
         var a = 0;
-        (dt_boxes, var img_crop_list) = PreProcessor.preprocess_boxes(dt_boxes, ori_im);
+        (dt_boxes, IList<NDArray> img_crop_list) = PreProcessor.preprocess_boxes(dt_boxes, ori_im);
 
         //// text classifier
-        //var angle_list;
-        //if (flags.use_angle_cls)
-        //{
-        //    var text_classifier = new TextClassifier(flags);
-        //    (img_crop_list, angle_list) = text_classifier.Detect(img_crop_list);
-        //}
+        if (flags.use_angle_cls) {
+            var text_classifier = new TextClassifier(flags);
+            (img_crop_list, _) = text_classifier.Classify(img_crop_list);
+        }
 
         //// text recognize
         var text_recognizer = new TextRecognizer(flags);
