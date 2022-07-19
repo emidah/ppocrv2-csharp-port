@@ -20,10 +20,11 @@ public record class Args {
     public string rec_image_shape = "3, 32, 320";
     public int rec_batch_num = 6;
     public int max_text_length = 25;
-    public string rec_char_dict_path = "./utils/doc/ppocr_keys_v1.txt";
+    public string rec_char_dict_path = "./doc/ppocr_keys_v1.txt";
     public bool use_space_char = true;
     public string vis_font_path = "./utils/doc/fonts/simfang.ttf";
-    
+    public float drop_score = 0.5f;
+
     public bool use_angle_cls = true;
     public string cls_model_dir;
     public string cls_image_shape = "3, 48, 192";

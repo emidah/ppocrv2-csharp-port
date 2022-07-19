@@ -40,7 +40,7 @@ public class TextDetector {
         this.predictor = sess;
     }
 
-    public IList<object> Detect(NDArray img) {
+    public NDArray Detect(NDArray img) {
         var ori_im = img.Copy();
         var data1 = new Dictionary<string, NDArray>() { { "image", img } };
 
@@ -70,8 +70,7 @@ public class TextDetector {
         var post_result = this.postprocess_op.PostProcess(preds, shape_list);
         var dt_boxes = post_result[0].points;
         dt_boxes = this.filter_tag_det_res(dt_boxes, ori_im.shape);
-        //return dt_boxes;
-        return null;
+        return dt_boxes;
     }
 
     private NDArray filter_tag_det_res(NDArray dt_boxes, Shape shape) {
