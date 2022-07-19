@@ -2,7 +2,7 @@
 using Tensorflow;
 using Tensorflow.NumPy;
 
-namespace PaddleOCR;
+namespace PPOCRv2.TextRecognizer;
 
 /// <summary>
 ///     Convert between text-label and text-index
@@ -40,7 +40,7 @@ public abstract class BaseRecLabelDecode {
     public abstract string[] add_special_char(string[] dictCharacter);
 
     /// <summary>
-    /// convert text-index into text-label
+    ///     convert text-index into text-label
     /// </summary>
     /// <param name="textIndex"></param>
     /// <param name="textProb"></param>
@@ -59,7 +59,7 @@ public abstract class BaseRecLabelDecode {
                     continue;
                 }
 
-                if (isRemoveDuplicate) { 
+                if (isRemoveDuplicate) {
                     //only for predict
                     if (idx > 0 && textIndex[batchIdx][idx - 1] == textIndex[
                             batchIdx][idx]) {

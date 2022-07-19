@@ -1,7 +1,7 @@
 ﻿using Tensorflow;
 using Tensorflow.NumPy;
 
-namespace PaddleOCR;
+namespace PPOCRv2.TextRecognizer;
 
 using static Binding;
 
@@ -12,7 +12,7 @@ public class CtcLabelDecode : BaseRecLabelDecode {
     public List<(string, float)> DoDecode(NDArray preds) {
         var predsIdx = np.argmax(preds, 2);
         var predsProb = new NDArray(tf.max(preds, new Axis(2)));
-        var text = this.Decode(predsIdx, predsProb, true);
+        var text = Decode(predsIdx, predsProb, true);
         return text;
     }
 

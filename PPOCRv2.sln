@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32616.157
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PPOCRv2-dotnet", "PaddleOCR\PPOCRv2-dotnet.csproj", "{65D3DB85-A85D-4C20-81C8-3B3E219B4645}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PPOCRv2", "PPOCRv2\PPOCRv2.csproj", "{65D3DB85-A85D-4C20-81C8-3B3E219B4645}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpCV", "SharpCV\src\SharpCV\SharpCV.csproj", "{193823BC-2C42-4114-BFD9-3F017D54E8ED}"
 EndProject

@@ -3,12 +3,12 @@ using Tensorflow;
 using Tensorflow.NumPy;
 using Binding = SharpCV.Binding;
 
-namespace PaddleOCR;
+namespace PPOCRv2.Helpers;
 
 using static Binding;
 using static Tensorflow.Binding;
 
-public class PreProcessor {
+public static class PreProcessor {
     public static (NDArray, IList<NDArray>) PreprocessBoxes(NDArray dtBoxes, NDArray oriIm) {
         var imgCropList = new List<NDArray>();
         dtBoxes = SortedBoxes(dtBoxes);

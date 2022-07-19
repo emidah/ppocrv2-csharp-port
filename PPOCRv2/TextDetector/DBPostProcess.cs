@@ -1,14 +1,16 @@
 ﻿using ClipperLib;
 using OpenCvSharp;
+using PPOCRv2.Helpers;
 using Tensorflow;
 using Tensorflow.NumPy;
 using static SharpCV.Binding;
 using static Tensorflow.Binding;
 
-namespace PaddleOCR;
+namespace PPOCRv2.TextDetector;
 
 public class DbPostProcess {
     private readonly float boxThresh;
+
     //private readonly NDArray dilationKernel;
     private readonly int maxCandidates;
     private readonly int minSize;
@@ -21,7 +23,7 @@ public class DbPostProcess {
         this.boxThresh = boxThresh;
         this.maxCandidates = maxCandidates;
         this.unclipRatio = unclipRatio;
-        this.minSize = 3;
+        minSize = 3;
         this.scoreMode = scoreMode;
         useDilation = false;
         //this.dilationKernel = useDilation ? np.array(new[] { new[] { 1, 1 }, new[] { 1, 1 } }) : null;
@@ -57,7 +59,6 @@ public class DbPostProcess {
     }
 
     public (NDArray, List<float>) BoxesFromBitmap(NDArray pred, NDArray bitmap, NDArray destWidth, NDArray destHeight) {
-
         var (height, width) = bitmap.shape;
         bitmap = bitmap.astype(TF_DataType.TF_INT8) * 255;
         //bitmap = new NDArray(bitmap..Select(b => (bool)b ? 255 : 0).ToArray(), bitmap.shape);
@@ -68,26 +69,26 @@ public class DbPostProcess {
             a.Select(c => new NDArray(new[] { c.X, c.Y })).ToArray())
         ).ToArray();
 
-        var numContours = Math.Min(contours.Length, this.maxCandidates);
+        var numContours = Math.Min(contours.Length, maxCandidates);
 
         var boxes = new List<NDArray>();
         var scores = new List<float>();
         foreach (var index in Enumerable.Range(0, numContours)) {
             var contour = contours[index];
             var (points, sside) = GetMiniBoxes(contour);
-            if (sside < this.minSize) {
+            if (sside < minSize) {
                 continue;
             }
 
             points = points.Copy();
             var score = BoxScoreFast(pred, points.reshape(new Shape(-1, 2)));
-            if (this.boxThresh > score) {
+            if (boxThresh > score) {
                 continue;
             }
 
-            var box = this.Unclip(points).reshape(new Shape(-1, 1, 2));
+            var box = Unclip(points).reshape(new Shape(-1, 1, 2));
             (box, sside) = GetMiniBoxes(box);
-            if (sside < this.minSize + 2) {
+            if (sside < minSize + 2) {
                 continue;
             }
 
@@ -110,10 +111,6 @@ public class DbPostProcess {
     }
 
     public static float BoxScoreFast(NDArray bitmap, NDArray boxOg) {
-        //'''
-        //BoxScoreFast:
-        //use bbox mean score as the mean score
-        //'''
         var (h, w) = ((int)bitmap.shape[0], (int)bitmap.shape[1]);
         var box = boxOg.Copy();
         var xmin = new NDArray(tf.clip_by_value(np.floor(box[S(":, 0")].NdMin()).astype(np.int32), 0, w - 1));
@@ -130,8 +127,6 @@ public class DbPostProcess {
             box[i, 1] = ndArray[1];
             i++;
         }
-
-        //var maskMat = new Mat(mask.shape.as_int_list(), MatType.CV_8U, mask.ToByteArray());
         mask = cv2.FillPoly(mask, box.reshape(new Shape(1, -1, 2)).astype(TF_DataType.TF_INT32), new Scalar(1));
         using var croppedBitmap = (bitmap[S($"{ymin}: {ymax + 1}, {xmin}: {xmax + 1}")] * 255).astype(TF_DataType.TF_UINT8);
         using var bitMat = new Mat(croppedBitmap.shape.as_int_list(), MatType.CV_8U, croppedBitmap.ToByteArray());
@@ -146,24 +141,19 @@ public class DbPostProcess {
     }
 
     private static double PolygonArea(NDArray polygon) {
-        int i, j;
-        double area = 0;
-
+        var area = 0.0d;
         var length = (int)polygon.shape[0];
-
-        for (i = 0; i < length; i++) {
-            j = (i + 1) % length;
-
+        for (var i = 0; i < length; i++) {
+            var j = (i + 1) % length;
             area += polygon[i][0] * polygon[j][1];
             area -= polygon[i][1] * polygon[j][0];
         }
-
         area /= 2;
-        return area < 0 ? -area : area;
+        return Math.Abs(area);
     }
 
     public NDArray Unclip(NDArray box) {
-        var distance = PolygonArea(box) * this.unclipRatio / this.PolygonLength(box);
+        var distance = PolygonArea(box) * unclipRatio / PolygonLength(box);
         var offset = new ClipperOffset();
         var boxPoints = box.Select(nd => new IntPoint((int)nd[0], (int)nd[1])).ToList();
         offset.AddPath(boxPoints, JoinType.jtRound, EndType.etClosedPolygon);
@@ -198,10 +188,8 @@ public class DbPostProcess {
 
     public List<Box> PostProcess(Dictionary<string, NDArray> outsDict, NDArray shapeList) {
         var pred = outsDict["maps"];
-        //if isinstance(pred, paddle.Tensor):
-        //pred = pred.numpy()
         pred = pred[Slice.ParseSlices(":, 0, :, :")]; //????
-        var segmentation = pred > this.thresh;
+        var segmentation = pred > thresh;
 
         var boxesBatch = new List<Box>();
         foreach (var batchIndex in Enumerable.Range(0, (int)pred.shape[0])) {
@@ -215,7 +203,7 @@ public class DbPostProcess {
             //}
 
             mask = segmentation[batchIndex];
-            var (boxes, scores) = this.BoxesFromBitmap(pred[batchIndex], mask,
+            var (boxes, scores) = BoxesFromBitmap(pred[batchIndex], mask,
                 srcW, srcH);
 
             boxesBatch.Add(new Box {

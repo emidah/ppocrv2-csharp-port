@@ -1,6 +1,6 @@
 ﻿// ReSharper disable InconsistentNaming
 
-namespace PaddleOCR;
+namespace PPOCRv2;
 
 public record class Args {
     public int cls_batch_num = 6;
@@ -12,7 +12,7 @@ public record class Args {
 
     public float det_db_thresh = 0.3f;
     public float det_db_unclip_ratio = 1.5f;
-    public float det_limit_side_len = 2*960;
+    public float det_limit_side_len = 2 * 960;
     public string det_limit_type = "max";
     public string det_model_dir;
     public float drop_score = 0.5f;
@@ -26,7 +26,5 @@ public record class Args {
 
     public bool use_angle_cls = true;
     public bool use_dilation = false;
-
-    public bool use_paddle_predict = false;
     public bool use_space_char = true;
 }

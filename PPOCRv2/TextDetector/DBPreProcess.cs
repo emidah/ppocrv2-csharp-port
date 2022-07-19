@@ -4,7 +4,7 @@ using Tensorflow.NumPy;
 using static SharpCV.Binding;
 using static Tensorflow.Binding;
 
-namespace PaddleOCR;
+namespace PPOCRv2.TextDetector;
 
 public class DbPreProcess {
     private readonly Args args;
@@ -14,11 +14,11 @@ public class DbPreProcess {
     }
 
     public List<NDArray> PreProcess(Dictionary<string, NDArray> data) {
-        data = this.DetResizeForTest(this.args.det_limit_side_len,
-            this.args.det_limit_type, data);
+        data = DetResizeForTest(args.det_limit_side_len,
+            args.det_limit_type, data);
         data = NormalizeImage(data);
-        data = this.ToChwImage(data);
-        var data2 = this.KeepKeys(new[] { "image", "shape" }, data);
+        data = ToChwImage(data);
+        var data2 = KeepKeys(new[] { "image", "shape" }, data);
         return data2;
     }
 
@@ -76,6 +76,7 @@ public class DbPreProcess {
             if ((int)resizeW <= 0 || (int)resizeH <= 0) {
                 return new Dictionary<string, NDArray>();
             }
+
             img = cv2.resize(new Mat(img), ((int)resizeW, (int)resizeH));
         } catch {
             Console.WriteLine($"{img.shape}, {resizeW}, {resizeH}");

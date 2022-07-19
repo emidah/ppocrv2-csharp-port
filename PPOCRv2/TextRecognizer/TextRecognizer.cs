@@ -1,11 +1,12 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using PPOCRv2.Helpers;
 using Tensorflow;
 using Tensorflow.NumPy;
 using static SharpCV.Binding;
 using static Tensorflow.Binding;
 
-namespace PaddleOCR;
+namespace PPOCRv2.TextRecognizer;
 
 public class TextRecognizer {
     private readonly CtcLabelDecode postprocessOp;
@@ -14,14 +15,14 @@ public class TextRecognizer {
     private readonly List<int> recImageShape;
 
     public TextRecognizer(Args args) {
-        this.recImageShape = args.rec_image_shape.Split(',').Select(s => int.Parse(s.Trim())).ToList();
-        this.recBatchNum = args.rec_batch_num;
-        this.postprocessOp = new CtcLabelDecode(args.rec_char_dict_path,
+        recImageShape = args.rec_image_shape.Split(',').Select(s => int.Parse(s.Trim())).ToList();
+        recBatchNum = args.rec_batch_num;
+        postprocessOp = new CtcLabelDecode(args.rec_char_dict_path,
             args.use_space_char);
 
         var modelDir = args.rec_model_dir;
         var sess = new InferenceSession(modelDir);
-        this.predictor = sess;
+        predictor = sess;
     }
 
     public List<(string, float)> Recognize(List<NDArray> imgList) {
@@ -38,7 +39,7 @@ public class TextRecognizer {
         }
 
         //[['', 0.0]] *img_num
-        var batchNum = this.recBatchNum;
+        var batchNum = recBatchNum;
 
         for (var begImgNo = 0; begImgNo < imgNum; begImgNo += batchNum) {
             var endImgNo = Math.Min(imgNum, begImgNo + batchNum);
@@ -51,7 +52,7 @@ public class TextRecognizer {
             }
 
             for (var ino = begImgNo; ino < endImgNo; ino++) {
-                var normImg = this.ResizeNormImg(imgList[indices[ino]],
+                var normImg = ResizeNormImg(imgList[indices[ino]],
                     maxWhRatio);
                 normImg = normImg[np.newaxis, new Slice(":")];
                 normImgBatch.Add(normImg);
@@ -68,12 +69,12 @@ public class TextRecognizer {
             var mem = new Memory<float>(arrNormImgBatch.ToArray<float>());
             var inputTensor = new DenseTensor<float>(mem, arrNormImgBatch.shape.as_int_list());
             var input = new List<NamedOnnxValue>
-                { NamedOnnxValue.CreateFromTensor(this.predictor.InputMetadata.Keys.First(), inputTensor) };
-            var outputs = this.predictor.Run(input).ToList();
+                { NamedOnnxValue.CreateFromTensor(predictor.InputMetadata.Keys.First(), inputTensor) };
+            var outputs = predictor.Run(input).ToList();
             var tensor = outputs[0].AsTensor<float>();
             var predsArray = new NDArray(tensor.ToArray(), new Shape(tensor.Dimensions.ToArray()));
 
-            var recResult = this.postprocessOp.DoDecode(predsArray);
+            var recResult = postprocessOp.DoDecode(predsArray);
             for (var rno = 0; rno < recResult.Count; rno++) {
                 recRes[indices[begImgNo + rno]] = recResult[rno];
             }
@@ -83,10 +84,10 @@ public class TextRecognizer {
     }
 
     private NDArray ResizeNormImg(NDArray img, float maxWhRatio) {
-        var (imgC, imgH, imgW) = (this.recImageShape[0], this.recImageShape[1], this.recImageShape[2]);
+        var (imgC, imgH, imgW) = (recImageShape[0], recImageShape[1], recImageShape[2]);
         //assert imgC == img.shape[2]
         imgW = (int)(32 * maxWhRatio);
-        var w = this.predictor.InputMetadata.First().Value.Dimensions[3]; //TODO
+        var w = predictor.InputMetadata.First().Value.Dimensions[3]; //TODO
         if (w > 0) {
             imgW = w;
         }

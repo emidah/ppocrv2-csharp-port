@@ -1,25 +1,25 @@
-﻿
-using Microsoft.ML.OnnxRuntime;
+﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using PPOCRv2.Helpers;
 using Tensorflow;
 using Tensorflow.NumPy;
 
-namespace PaddleOCR; 
+namespace PPOCRv2.TextDetector;
 
 public class TextDetector {
-    private readonly DbPreProcess preprocessOp;
     private readonly DbPostProcess postprocessOp;
     private readonly InferenceSession predictor;
+    private readonly DbPreProcess preprocessOp;
 
     public TextDetector(Args args) {
-        this.preprocessOp = new DbPreProcess(args);
-        this.postprocessOp = new DbPostProcess(
-            thresh: args.det_db_thresh,
-            boxThresh: args.det_db_box_thresh,
-            maxCandidates: 1000,
-            unclipRatio: args.det_db_unclip_ratio,
-            useDilation: args.use_dilation,
-            scoreMode: args.det_db_score_mode);
+        preprocessOp = new DbPreProcess(args);
+        postprocessOp = new DbPostProcess(
+            args.det_db_thresh,
+            args.det_db_box_thresh,
+            1000,
+            args.det_db_unclip_ratio,
+            args.use_dilation,
+            args.det_db_score_mode);
 
         var modelDir = args.det_model_dir;
         //if (args.use_paddle_predict:
@@ -27,43 +27,38 @@ public class TextDetector {
         //model.eval()
         //this.predictor = model
         //else:
-         
+
         //import onnxruntime as ort
         var modelFilePath = modelDir;
         var sess = new InferenceSession(modelFilePath);
-        this.predictor = sess;
+        predictor = sess;
     }
 
     public NDArray Detect(NDArray img) {
         var oriIm = img.Copy();
-        var data1 = new Dictionary<string, NDArray>() { { "image", img } };
+        var data1 = new Dictionary<string, NDArray> { { "image", img } };
 
-        var data = this.preprocessOp.PreProcess(data1);
+        var data = preprocessOp.PreProcess(data1);
         (img, var shapeList) = (data[0], data[1]);
         if (img == null) {
             return null; //, 0;
         }
 
-        img = np.expand_dims(img, axis: 0);
-        shapeList = np.expand_dims(shapeList, axis: 0);
+        img = np.expand_dims(img, 0);
+        shapeList = np.expand_dims(shapeList, 0);
         img = img.Copy();
 
-        //if (this.use_paddle_predict)
-        //output = self.predictor(img).numpy()
-        //outputs = []
-        //outputs.append(output)
-        //else:
         var mem = new Memory<float>(img.ToArray<float>());
         var inputTensor = new DenseTensor<float>(mem, img.shape.as_int_list());
-        var input = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(this.predictor.InputMetadata.Keys.First(), inputTensor) };
-        var outputs = this.predictor.Run(input).ToList();
+        var input = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(predictor.InputMetadata.Keys.First(), inputTensor) };
+        var outputs = predictor.Run(input).ToList();
 
         var preds = new Dictionary<string, NDArray>();
         var tensor = outputs[0].AsTensor<float>();
         preds["maps"] = new NDArray(tensor.ToArray(), new Shape(tensor.Dimensions.ToArray()));
-        var postResult = this.postprocessOp.PostProcess(preds, shapeList);
+        var postResult = postprocessOp.PostProcess(preds, shapeList);
         var dtBoxes = postResult[0].Points;
-        dtBoxes = this.FilterTagDetRes(dtBoxes, oriIm.shape);
+        dtBoxes = FilterTagDetRes(dtBoxes, oriIm.shape);
         return dtBoxes;
     }
 
@@ -72,8 +67,8 @@ public class TextDetector {
         var dtBoxesNew = new List<NDArray>();
         foreach (var dBox in dtBoxes) {
             var box = dBox;
-            box = this.order_points_clockwise(box);
-            box = this.clip_det_res(box, imgHeight, imgWidth);
+            box = order_points_clockwise(box);
+            box = clip_det_res(box, imgHeight, imgWidth);
             var rectWidth = (int)np.linalg.norm(box[0] - box[1]);
             var rectHeight = (int)np.linalg.norm(box[0] - box[3]);
             if (rectWidth <= 3 || rectHeight <= 3) {
@@ -88,10 +83,11 @@ public class TextDetector {
     }
 
     private NDArray clip_det_res(NDArray points, long imgHeight, long imgWidth) {
-        for (int pno = 0; pno < (int)points.shape[0]; pno++) {
+        for (var pno = 0; pno < (int)points.shape[0]; pno++) {
             points[pno, 0] = Math.Min(Math.Max((float)points[pno, 0], 0), imgWidth - 1);
             points[pno, 1] = Math.Min(Math.Max((float)points[pno, 1], 0), imgHeight - 1);
         }
+
         return points;
     }
 

@@ -13,7 +13,7 @@ using Scalar = OpenCvSharp.Scalar;
 using Size = OpenCvSharp.Size;
 using Size2f = OpenCvSharp.Size2f;
 
-namespace PaddleOCR;
+namespace PPOCRv2.Helpers;
 
 internal static class CvApiExtensions {
     public static NDArray FillPoly(this cv_api cv, NDArray img, NDArray box, Scalar color) {

@@ -1,12 +1,13 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using PPOCRv2.Helpers;
 using SharpCV;
 using Tensorflow;
 using Tensorflow.NumPy;
 using static SharpCV.Binding;
 using static Tensorflow.Binding;
 
-namespace PaddleOCR;
+namespace PPOCRv2.CLS;
 
 public class TextClassifier {
     private readonly int clsBatchNum;
@@ -16,14 +17,14 @@ public class TextClassifier {
     private readonly InferenceSession predictor;
 
     public TextClassifier(Args args) {
-        this.clsImageShape = args.cls_image_shape.Split(",").Select(int.Parse).ToArray();
-        this.clsBatchNum = args.cls_batch_num;
-        this.clsThresh = args.cls_thresh;
-        this.postprocessOp = new ClsPostProcess(args.label_list);
+        clsImageShape = args.cls_image_shape.Split(",").Select(int.Parse).ToArray();
+        clsBatchNum = args.cls_batch_num;
+        clsThresh = args.cls_thresh;
+        postprocessOp = new ClsPostProcess(args.label_list);
 
         var modelDir = args.cls_model_dir;
         var sess = new InferenceSession(modelDir);
-        this.predictor = sess;
+        predictor = sess;
     }
 
     public (IList<NDArray>, object) Classify(IList<NDArray> imgList) {
@@ -42,7 +43,7 @@ public class TextClassifier {
             clsRes.Add(("", 0.0f));
         }
 
-        var batchNum = this.clsBatchNum;
+        var batchNum = clsBatchNum;
 
         for (var begImgNo = 0; begImgNo < imgNum; begImgNo += batchNum) {
             var endImgNo = Math.Min(imgNum, begImgNo + batchNum);
@@ -55,7 +56,7 @@ public class TextClassifier {
             }
 
             for (var ino = begImgNo; ino < endImgNo; ino++) {
-                var normImg = this.ResizeNormImg(imgList[indices[ino]],
+                var normImg = ResizeNormImg(imgList[indices[ino]],
                     maxWhRatio);
                 normImg = normImg[np.newaxis, new Slice(":")];
                 normImgBatch.Add(normImg);
@@ -70,16 +71,16 @@ public class TextClassifier {
             var mem = new Memory<float>(arrNormImgBatch.ToArray<float>());
             var inputTensor = new DenseTensor<float>(mem, arrNormImgBatch.shape.as_int_list());
             var input = new List<NamedOnnxValue>
-                { NamedOnnxValue.CreateFromTensor(this.predictor.InputMetadata.Keys.First(), inputTensor) };
-            var outputs = this.predictor.Run(input).ToList();
+                { NamedOnnxValue.CreateFromTensor(predictor.InputMetadata.Keys.First(), inputTensor) };
+            var outputs = predictor.Run(input).ToList();
             var tensor = outputs[0].AsTensor<float>();
             var probOutArray = new NDArray(tensor.ToArray(), new Shape(tensor.Dimensions.ToArray()));
 
-            var clsResult = this.postprocessOp.PostProcess(probOutArray);
+            var clsResult = postprocessOp.PostProcess(probOutArray);
             for (var rno = 0; rno < clsResult.Count; rno++) {
                 var (label, score) = clsResult[rno];
                 clsRes[indices[begImgNo + rno]] = (label, score);
-                if (label.Contains("180") && score > this.clsThresh) {
+                if (label.Contains("180") && score > clsThresh) {
                     imgList[indices[begImgNo + rno]] = cv2.rotate(
                         imgList[indices[begImgNo + rno]], (RotateFlags)1);
                 }
@@ -90,10 +91,10 @@ public class TextClassifier {
     }
 
     private NDArray ResizeNormImg(NDArray img, float maxWhRatio) {
-        var (imgC, imgH, imgW) = (this.clsImageShape[0], this.clsImageShape[1], this.clsImageShape[2]);
+        var (imgC, imgH, imgW) = (clsImageShape[0], clsImageShape[1], clsImageShape[2]);
         //assert imgC == img.shape[2]
         imgW = (int)(32 * maxWhRatio);
-        var w = this.predictor.InputMetadata.First().Value.Dimensions[3]; //TODO
+        var w = predictor.InputMetadata.First().Value.Dimensions[3]; //TODO
         if (w > 0) {
             imgW = w;
         }
@@ -115,21 +116,5 @@ public class TextClassifier {
         var paddingIm = np.zeros((imgC, imgH, imgW), np.float32);
         paddingIm[new Slice(":"), new Slice(":"), new Slice(0, resizedW)] = resizedImage;
         return paddingIm;
-    }
-
-    public class ClsPostProcess {
-        private readonly int[] labelList;
-        //""" Convert between text-label and text-index """
-
-        public ClsPostProcess(int[] labelList) {
-            //super(ClsPostProcess, this).__init__()
-            this.labelList = labelList;
-        }
-
-        public List<(string, float)> PostProcess(NDArray preds) {
-            var predIdxs = np.argmax(preds, 1);
-            var decodeOut = predIdxs.Select((idx, i) => (this.labelList[idx].ToString(), (float)preds[i, idx])).ToList();
-            return decodeOut;
-        }
     }
 }
