@@ -14,4 +14,4 @@ Everything necessary for running the code is included in the repository. DemoApp
 
 - Do something about pyclipper
 
-- Remove SharpCV dependency
+- Replace SharpCV dependency with tensorflow.net and change license to non-gplv3
