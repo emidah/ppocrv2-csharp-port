@@ -14,14 +14,14 @@ public class TextDetector {
     public TextDetector(Args args) {
         preprocessOp = new DbPreProcess(args);
         postprocessOp = new DbPostProcess(
-            args.det_db_thresh,
-            args.det_db_box_thresh,
+            args.DetDbThresh,
+            args.DetDbBoxThresh,
             1000,
-            args.det_db_unclip_ratio,
-            args.use_dilation,
-            args.det_db_score_mode);
+            args.DetDbUnclipRatio,
+            args.UseDilation,
+            args.DetDbScoreMode);
 
-        var modelDir = args.det_model_dir;
+        var modelDir = args.DetModelDir;
         //if (args.use_paddle_predict:
         //model = paddle.jit.load(model_dir + "/inference")
         //model.eval()

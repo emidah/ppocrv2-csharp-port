@@ -61,7 +61,6 @@ public class DbPostProcess {
     public (NDArray, List<float>) BoxesFromBitmap(NDArray pred, NDArray bitmap, NDArray destWidth, NDArray destHeight) {
         var (height, width) = bitmap.shape;
         bitmap = bitmap.astype(TF_DataType.TF_INT8) * 255;
-        //bitmap = new NDArray(bitmap..Select(b => (bool)b ? 255 : 0).ToArray(), bitmap.shape);
         using var bitMat = new Mat(bitmap.shape.as_int_list(), MatType.CV_8U, bitmap.ToByteArray());
         Cv2.FindContours(InputArray.Create(bitMat), out var ct, out _, RetrievalModes.List,
             ContourApproximationModes.ApproxSimple);
@@ -196,11 +195,6 @@ public class DbPostProcess {
             var (srcH, srcW, ratioH, ratioW) = (shapeList[batchIndex][0], shapeList[batchIndex][1], shapeList[batchIndex][2],
                 shapeList[batchIndex][3]);
             NDArray mask;
-            //if (this.dilationKernel != null) {
-            //    //mask = cv2.dilate(
-            //    //    np.array(segmentation[batch_index]).astype(np.uint8),
-            //    //    this.dilation_kernel);
-            //}
 
             mask = segmentation[batchIndex];
             var (boxes, scores) = BoxesFromBitmap(pred[batchIndex], mask,

@@ -9,7 +9,7 @@ internal static class PostProcessor {
         var (filterBoxes, filterRecRes) = (new List<NDArray>(), new List<(string, float)>());
         foreach (var (box, recResult) in zip(dtBoxes, recRes)) {
             var (text, score) = recResult;
-            if (score >= flags.drop_score) {
+            if (score >= flags.DropScore) {
                 filterBoxes.append(box);
                 filterRecRes.append(recResult);
             }

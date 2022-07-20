@@ -15,12 +15,12 @@ public class TextRecognizer {
     private readonly List<int> recImageShape;
 
     public TextRecognizer(Args args) {
-        recImageShape = args.rec_image_shape.Split(',').Select(s => int.Parse(s.Trim())).ToList();
-        recBatchNum = args.rec_batch_num;
-        postprocessOp = new CtcLabelDecode(args.rec_char_dict_path,
-            args.use_space_char);
+        recImageShape = args.RecImageShape.Split(',').Select(s => int.Parse(s.Trim())).ToList();
+        recBatchNum = args.RecBatchNum;
+        postprocessOp = new CtcLabelDecode(args.RecCharDictPath,
+            args.UseSpaceChar);
 
-        var modelDir = args.rec_model_dir;
+        var modelDir = args.RecModelDir;
         var sess = new InferenceSession(modelDir);
         predictor = sess;
     }

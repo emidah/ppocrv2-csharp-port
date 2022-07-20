@@ -7,7 +7,7 @@ using Tensorflow.NumPy;
 using static SharpCV.Binding;
 using static Tensorflow.Binding;
 
-namespace PPOCRv2.CLS;
+namespace PPOCRv2.AngleClassifier;
 
 public class TextClassifier {
     private readonly int clsBatchNum;
@@ -17,12 +17,12 @@ public class TextClassifier {
     private readonly InferenceSession predictor;
 
     public TextClassifier(Args args) {
-        clsImageShape = args.cls_image_shape.Split(",").Select(int.Parse).ToArray();
-        clsBatchNum = args.cls_batch_num;
-        clsThresh = args.cls_thresh;
-        postprocessOp = new ClsPostProcess(args.label_list);
+        clsImageShape = args.ClsImageShape.Split(",").Select(int.Parse).ToArray();
+        clsBatchNum = args.ClsBatchNum;
+        clsThresh = args.ClsThresh;
+        postprocessOp = new ClsPostProcess(args.LabelList);
 
-        var modelDir = args.cls_model_dir;
+        var modelDir = args.ClsModelDir;
         var sess = new InferenceSession(modelDir);
         predictor = sess;
     }
@@ -64,10 +64,6 @@ public class TextClassifier {
 
             var arrNormImgBatch = np.concatenate(normImgBatch.ToArray());
             arrNormImgBatch = arrNormImgBatch.Copy();
-            //input_dict = {}
-            //input_dict[self.predictor.get_inputs()[0].name] = norm_img_batch
-            //outputs = self.predictor.run(None, input_dict)
-            //prob_out = outputs[0]
             var mem = new Memory<float>(arrNormImgBatch.ToArray<float>());
             var inputTensor = new DenseTensor<float>(mem, arrNormImgBatch.shape.as_int_list());
             var input = new List<NamedOnnxValue>
@@ -92,7 +88,6 @@ public class TextClassifier {
 
     private NDArray ResizeNormImg(NDArray img, float maxWhRatio) {
         var (imgC, imgH, imgW) = (clsImageShape[0], clsImageShape[1], clsImageShape[2]);
-        //assert imgC == img.shape[2]
         imgW = (int)(32 * maxWhRatio);
         var w = predictor.InputMetadata.First().Value.Dimensions[3]; //TODO
         if (w > 0) {

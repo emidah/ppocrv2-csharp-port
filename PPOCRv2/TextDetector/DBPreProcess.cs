@@ -14,8 +14,8 @@ public class DbPreProcess {
     }
 
     public List<NDArray> PreProcess(Dictionary<string, NDArray> data) {
-        data = DetResizeForTest(args.det_limit_side_len,
-            args.det_limit_type, data);
+        data = DetResizeForTest(args.DetLimitSideLen,
+            args.DetLimitType, data);
         data = NormalizeImage(data);
         data = ToChwImage(data);
         var data2 = KeepKeys(new[] { "image", "shape" }, data);

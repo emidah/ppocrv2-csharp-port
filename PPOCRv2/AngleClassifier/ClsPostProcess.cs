@@ -1,6 +1,6 @@
 ﻿using Tensorflow.NumPy;
 
-namespace PPOCRv2.CLS;
+namespace PPOCRv2.AngleClassifier;
 
 public class ClsPostProcess {
     private readonly int[] labelList;

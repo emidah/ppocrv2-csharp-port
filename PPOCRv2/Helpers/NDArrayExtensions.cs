@@ -10,6 +10,10 @@ public static class NdArrayExtensions {
     }
 
     public static NDArray FromArray(NDArray[] arrays) {
+        if (arrays.Length == 0) {
+            return new NDArray(Array.Empty<int>());
+        }
+
         var newShape = arrays[0].shape.as_int_list().Prepend(arrays.Length).ToArray();
         var toReturn = new NDArray(new Shape(newShape), arrays[0].dtype);
         for (var i = 0; i < arrays.Length; i++) {
